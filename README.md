@@ -5,7 +5,7 @@ iOS ipa 重签名
 
 用法：
 
-1.在左面创建reipa文件夹
+1.在桌面创建reipa文件夹
 
 2.在reipa文件夹中放入ipa包和mobileprovision配置文件
 
