@@ -4,6 +4,7 @@ import os
 import sys
 import getpass
 import re
+import base64
 
 #桌面路径
 desktopPath = "/Users/" + getpass.getuser() + "/Desktop/"
@@ -18,7 +19,7 @@ caName = ''
 
 def lookingForIpaAndProvisionName():
 	files = os.listdir(ipaForderPath)
-	print "files:",files
+	print("files:",files)
 
 	for file in files:
 		filePath = ipaForderPath + "/" + file
@@ -36,12 +37,12 @@ def lookingForIpaAndProvisionName():
 
 def checkIpaAndProvisionName():
 	if len(ipaName) > 0 and len(provisionName) > 0: 
-		print "ipa name :",ipaName
-		print "mobileprovision name:",provisionName
+		print("ipa name :",ipaName)
+		print("mobileprovision name:",provisionName)
 
 		return True
 	else :
-		print "unable to find ipa or mobileprovision"
+		print("unable to find ipa or mobileprovision")
 
 	return False
 
@@ -50,21 +51,28 @@ def lookingForCaName():
 
 	info = parseMobileprovision(provisionPath)
 
-	print "mobileprovision info: ",info
+	print("mobileprovision info: ",info)
 
-	caTypeStr = 'iPhone Distribution: '
 	global caName
-	if info["type"] == "development" :
-		caTypeStr = 'iPhone Developer: '
+	if len(info["cer"]) :
+		caName = info["cer"]
+	else :
+		caTypeStr = 'iPhone Distribution: '
+		if info["type"] == "development" :
+			caTypeStr = 'iPhone Developer: '
 
-	caName = caTypeStr + info["teamName"] + " (" + info["team"] + ")"
-	print "ca name : ",caName
+		caName = caTypeStr + info["teamName"] + " (" + info["team"] + ")"
+
+	print("ca name : ",caName)
 	return
 
 def parseMobileprovision(filePath):
     reader = open(filePath, "rb")
     readContent = reader.read()
     reader.close()
+
+    if sys.version_info[0] >= 3:
+    	readContent = readContent.decode('ISO-8859-1')
 
     cerRegularStr = re.compile("<key>DeveloperCertificates</key>[\s\r\n]*<array>[\s\r\n]*<data>(.*)</data>[\s\r\n]*</array>", re.M | re.S)
     cerStrList = cerRegularStr.findall(readContent)
@@ -86,7 +94,13 @@ def parseMobileprovision(filePath):
     teamNameStrList = teamNameRegularStr.findall(readContent)
     teamName = teamNameStrList[0]
 
-
+    base = base64.b64decode(cer)
+    if sys.version_info[0] >= 3:
+    	base = base.decode('ISO-8859-1')
+    
+    cerTeamRegularStr = re.compile("iPhone[\w\s\r\n]+\:[\w\s\r\n]+\(\w+\)",re.M | re.S)
+    cerTeam = cerTeamRegularStr.findall(base)
+    
     typeStr = ""
     if readContent.find("ProvisionsAllDevices") >= 0:
         typeStr = "enterprise"
@@ -106,7 +120,7 @@ def parseMobileprovision(filePath):
         "teamName" : teamName,
         "id"   : idStr,
         "name" : name,
-        "cer"  : cer,
+        "cer"  : cerTeam[0],
     }
     del readContent
     return info
@@ -147,7 +161,7 @@ def reloadCodeSignature():
 		os.system('cd %s;zip -r reload%s.ipa Payload'%(ipaForderPath, ipaName))
 
 	else :
-		print "unzip ipa error"
+		print("unzip ipa error")
 
 
 
